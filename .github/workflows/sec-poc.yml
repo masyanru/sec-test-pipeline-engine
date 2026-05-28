@@ -1,42 +1,40 @@
 name: F1 PoC witness
-  run-name: "F1 PoC ${{ inputs.external_id }}"
+run-name: "F1 PoC ${{ inputs.external_id }}"
 
-  on:
-    workflow_dispatch:
-      inputs:
-        external_id:
-          description: "Engine-injected correlation id (do not remove)"
-          required: false
-          default: "no-external_id"
-        sec_marker:
-          description: "Free-form marker from PoC client"
-          required: false
-          default: "no-marker"
+on:
+  workflow_dispatch:
+    inputs:
+      external_id:
+        description: "Engine-injected correlation id (do not remove)"
+        required: false
+        default: "no-external_id"
+      sec_marker:
+        description: "Free-form marker from PoC client"
+        required: false
+        default: "no-marker"
 
-  # Don't pile up runs if PoC is re-fired
-  concurrency:
-    group: f1-poc
-    cancel-in-progress: true
+concurrency:
+  group: f1-poc
+  cancel-in-progress: true
 
-  permissions: {}   # nothing — we explicitly do not need any tokens
+permissions: {}
 
-  jobs:
-    witness:
-      runs-on: ubuntu-latest
-      timeout-minutes: 2
-      steps:
-        - name: Stamp dispatcher identity
-          run: |
-            {
-              echo "## F1 PoC — proof of cross-repo dispatch"
-              echo ""
-              echo "| field | value |"
-              echo "| run_id           | \`${{ github.run_id }}\` |"
-              echo "| actor            | \`${{ github.actor }}\` |"
-              echo "| triggering_actor | \`${{ github.triggering_actor }}\` |"
-              echo "| external_id      | \`${{ inputs.external_id }}\` |"
-              echo "| sec_marker       | \`${{ inputs.sec_marker }}\` |"
-              echo ""
-              echo "If \`actor\`/\`triggering_actor\` ≠ \`masyanru\`, this run was"
-              echo "dispatched by a third-party identity using its own PAT/App."
-            } | tee -a "$GITHUB_STEP_SUMMARY"
+jobs:
+  witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Stamp dispatcher identity
+        run: |
+          {
+            echo "## F1 PoC — proof of cross-repo dispatch"
+            echo ""
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| repository       | \`${{ github.repository }}\` |"
+            echo "| event            | \`${{ github.event_name }}\` |"
+            echo "| actor            | \`${{ github.actor }}\` |"
+            echo "| triggering_actor | \`${{ github.triggering_actor }}\` |"
+            echo "| external_id      | \`${{ inputs.external_id }}\` |"
+            echo "| sec_marker       | \`${{ inputs.sec_marker }}\` |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
