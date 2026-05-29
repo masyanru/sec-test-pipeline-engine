@@ -1,0 +1,57 @@
+name: Injection PoC (vulnerable on purpose)
+run-name: "Injection PoC — ${{ inputs.external_id }}"
+
+# This workflow REPRODUCES the vulnerable pattern from
+# toloka-partners/project-pipeline-ots/.github/workflows/skip-step.yml:64
+#
+# It is intentionally vulnerable. Do NOT copy this pattern to real code.
+# Run it only in a throwaway sandbox repo (masyanru/sec-test-pipeline-engine).
+
+on:
+  workflow_dispatch:
+    inputs:
+      external_id:
+        required: false
+        default: 'no-id'
+        description: 'Correlation id'
+      domain:
+        required: true
+        description: |
+          Domain name. Vulnerable point: this value is interpolated directly
+          into a shell command via ${{ inputs.domain }} (NOT via env-var).
+
+concurrency:
+  group: injection-poc
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  vuln:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      # Pretend a sensitive value is in the runner env, the same way an
+      # App-token or secret would be in env in a real workflow step.
+      - name: Define a fake secret (simulates ${{ secrets.APP_PRIVATE_KEY }})
+        env:
+          FAKE_SECRET: 'sk_fake_super_secret_value_DO_NOT_PANIC_this_is_a_demo_token'
+        run: |
+          echo "FAKE_SECRET length: ${#FAKE_SECRET}"
+          # Persist it into the GITHUB_ENV so later steps see it too — this
+          # matches what `${{ secrets.X }}` does at job-prep time.
+          echo "FAKE_SECRET=$FAKE_SECRET" >> "$GITHUB_ENV"
+
+      # =====================================================================
+      # The vulnerable step — verbatim pattern from skip-step.yml:64
+      # =====================================================================
+      - name: Reset LFS-dirty files before PR creation
+        run: |
+          git add "domains/${{ inputs.domain }}/pipeline_state.yaml" || true
+          echo "step finished normally"
+
+      - name: Job summary
+        run: |
+          echo "## Injection PoC complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "- domain input: \`${{ inputs.domain }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- run url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
