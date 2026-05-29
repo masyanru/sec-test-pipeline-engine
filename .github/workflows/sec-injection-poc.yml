@@ -1,8 +1,8 @@
 name: Injection PoC (vulnerable on purpose)
-run-name: "Injection PoC — ${{ inputs.external_id }}"
+run-name: "Injection PoC"
 
 # This workflow REPRODUCES the vulnerable pattern from
-# toloka-partners/project-pipeline-ots/.github/workflows/skip-step.yml:64
+# toloka-partners/project-pipeline-ots/.github/workflows/skip-step.yml line 64
 #
 # It is intentionally vulnerable. Do NOT copy this pattern to real code.
 # Run it only in a throwaway sandbox repo (masyanru/sec-test-pipeline-engine).
@@ -16,36 +16,28 @@ on:
         description: 'Correlation id'
       domain:
         required: true
-        description: |
-          Domain name. Vulnerable point: this value is interpolated directly
-          into a shell command via ${{ inputs.domain }} (NOT via env-var).
+        description: 'Domain name. Vulnerable point - this value is interpolated directly into a shell command.'
 
 concurrency:
   group: injection-poc
   cancel-in-progress: true
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   vuln:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      # Pretend a sensitive value is in the runner env, the same way an
-      # App-token or secret would be in env in a real workflow step.
-      - name: Define a fake secret (simulates ${{ secrets.APP_PRIVATE_KEY }})
+      - name: Define a fake secret simulating a real APP_PRIVATE_KEY
         env:
           FAKE_SECRET: 'sk_fake_super_secret_value_DO_NOT_PANIC_this_is_a_demo_token'
         run: |
           echo "FAKE_SECRET length: ${#FAKE_SECRET}"
-          # Persist it into the GITHUB_ENV so later steps see it too — this
-          # matches what `${{ secrets.X }}` does at job-prep time.
           echo "FAKE_SECRET=$FAKE_SECRET" >> "$GITHUB_ENV"
 
-      # =====================================================================
-      # The vulnerable step — verbatim pattern from skip-step.yml:64
-      # =====================================================================
-      - name: Reset LFS-dirty files before PR creation
+      - name: Vulnerable step - pattern from skip-step.yml line 64
         run: |
           git add "domains/${{ inputs.domain }}/pipeline_state.yaml" || true
           echo "step finished normally"
@@ -53,5 +45,4 @@ jobs:
       - name: Job summary
         run: |
           echo "## Injection PoC complete" >> "$GITHUB_STEP_SUMMARY"
-          echo "- domain input: \`${{ inputs.domain }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- run url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "run url ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
